@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "name": "Meeting Confirmed",
+  "template": "{\"type\":\"Card\",\"size\":\"md\",\"children\":[{\"type\":\"Col\",\"align\":\"center\",\"gap\":4,\"padding\":{\"y\":4},\"children\":[{\"type\":\"Box\",\"background\":\"green-500\",\"radius\":\"full\",\"padding\":3,\"children\":[{\"type\":\"Icon\",\"name\":\"check\",\"size\":\"2xl\",\"color\":\"white\"}]},{\"type\":\"Col\",\"align\":\"center\",\"gap\":1,\"children\":[{\"type\":\"Title\",\"value\":\"Meeting Scheduled\",\"size\":\"lg\"},{\"type\":\"Text\",\"value\":{{ (subject) | tojson }},\"weight\":\"medium\"},{\"type\":\"Caption\",\"value\":{{ (time_str) | tojson }},\"color\":\"secondary\"}]}]},{\"type\":\"Divider\"},{\"type\":\"Row\",\"justify\":\"center\",\"children\":[{\"type\":\"Button\",\"label\":\"View in Calendar\",\"variant\":\"ghost\",\"iconStart\":\"calendar\",\"onClickAction\":{\"type\":\"calendar.view\"}}]}]}",
+  "jsonSchema": {
+    "type": "object",
+    "properties": {
+      "subject": { "type": "string" },
+      "time_str": { "type": "string" }
+    }
+  }
+}

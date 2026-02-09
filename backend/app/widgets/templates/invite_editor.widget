@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "name": "Invite Editor",
+  "template": "{\"type\":\"Card\",\"size\":\"md\",\"asForm\":true,\"children\":[{\"type\":\"Col\",\"gap\":3,\"children\":[{\"type\":\"Row\",\"align\":\"center\",\"gap\":3,\"children\":[{\"type\":\"Box\",\"size\":40,\"background\":\"blue-600\",\"radius\":\"lg\",\"align\":\"center\",\"justify\":\"center\",\"children\":[{\"type\":\"Icon\",\"name\":\"calendar\",\"color\":\"white\",\"size\":\"xl\"}]},{\"type\":\"Title\",\"value\":\"Invite Editor\",\"size\":\"md\"}]},{\"type\":\"Divider\"},{\"type\":\"Col\",\"gap\":3,\"children\":[{\"type\":\"Col\",\"gap\":1,\"children\":[{\"type\":\"Label\",\"value\":\"Subject\",\"fieldName\":\"subject\"},{\"type\":\"Input\",\"name\":\"subject\",\"defaultValue\":{{ (subject) | tojson }},\"placeholder\":\"Add a subject\"}]},{\"type\":\"Col\",\"gap\":1,\"children\":[{\"type\":\"Label\",\"value\":\"Agenda\",\"fieldName\":\"agenda\"},{\"type\":\"Textarea\",\"name\":\"agenda\",\"defaultValue\":{{ (agenda) | tojson }},\"placeholder\":\"Outline the agenda\",\"rows\":5}]},{\"type\":\"Col\",\"gap\":1,\"children\":[{\"type\":\"Label\",\"value\":\"Attendees\",\"fieldName\":\"attendees\"},{\"type\":\"Text\",\"value\":{{ (attendees) | tojson }},\"size\":\"sm\",\"color\":\"secondary\"}]},{\"type\":\"Col\",\"gap\":1,\"children\":[{\"type\":\"Label\",\"value\":\"Time\",\"fieldName\":\"time\"},{\"type\":\"Text\",\"value\":{{ (time_str) | tojson }},\"size\":\"sm\",\"color\":\"secondary\"}]},{\"type\":\"Col\",\"gap\":1,\"children\":[{\"type\":\"Label\",\"value\":\"Location\",\"fieldName\":\"location\"},{\"type\":\"Input\",\"name\":\"location\",\"defaultValue\":{{ (location) | tojson }},\"placeholder\":\"Room, address, or link\"}]},{\"type\":\"Divider\"},{\"type\":\"Row\",\"gap\":2,\"children\":[{\"type\":\"Button\",\"label\":\"Suggest Changes\",\"variant\":\"outline\",\"color\":\"secondary\",\"onClickAction\":{\"type\":\"invite.request_revision\"}},{\"type\":\"Spacer\"},{\"type\":\"Button\",\"submit\":true,\"label\":\"Send Invite\",\"style\":\"primary\",\"onClickAction\":{\"type\":\"invite.send\"}}]}]}]}]}",
+  "jsonSchema": {
+    "type": "object",
+    "properties": {
+      "subject": { "type": "string" },
+      "agenda": { "type": "string" },
+      "location": { "type": "string" },
+      "attendees": { "type": "string" },
+      "time_str": { "type": "string" }
+    }
+  }
+}

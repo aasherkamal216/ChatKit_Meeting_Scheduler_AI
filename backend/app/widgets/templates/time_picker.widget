@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "name": "Time Picker",
+  "template": "{\"type\":\"ListView\",\"children\":[{%- for slot in slots -%}{\"type\":\"ListViewItem\",\"key\":{{ (slot.id) | tojson }},\"gap\":3,\"align\":\"center\",\"onClickAction\":{\"type\":\"schedule.pick_slot\",\"payload\":{\"slot_id\":{{ (slot.id) | tojson }}}},\"children\":[{\"type\":\"Box\",\"background\":\"alpha-10\",\"radius\":\"sm\",\"padding\":2,\"children\":[{\"type\":\"Icon\",\"name\":\"calendar\",\"size\":\"lg\",\"color\":{{ (slot.conflict and \"warning\" or \"primary\") | tojson }}}]},{\"type\":\"Col\",\"gap\":1,\"flex\":\"auto\",\"children\":[{\"type\":\"Text\",\"value\":{{ (slot.time_label) | tojson }},\"size\":\"sm\",\"weight\":\"semibold\"},{\"type\":\"Caption\",\"value\":{{ (slot.duration) | tojson }},\"color\":\"secondary\"}{%- if slot.conflict -%},{\"type\":\"Badge\",\"label\":\"Conflict\",\"color\":\"warning\",\"variant\":\"soft\",\"size\":\"sm\"}{%- endif -%}]},{\"type\":\"Button\",\"label\":\"Pick\",\"size\":\"md\",\"variant\":{{ (slot.conflict and \"outline\" or \"solid\") | tojson }},\"color\":{{ (slot.conflict and \"warning\" or \"primary\") | tojson }},\"onClickAction\":{\"type\":\"schedule.pick_slot\",\"payload\":{\"slot_id\":{{ (slot.id) | tojson }}}}}]}{%- endfor -%}]}",
+  "jsonSchema": {
+    "type": "object",
+    "properties": {
+      "slots": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "time_label": { "type": "string" },
+            "duration": { "type": "string" },
+            "conflict": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}

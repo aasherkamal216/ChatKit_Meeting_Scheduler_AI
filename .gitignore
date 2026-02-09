@@ -59,4 +59,3 @@ venv/
 
 *.db
 *.db-[a-z0-9]*
-*.widget
