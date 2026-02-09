@@ -1,6 +1,9 @@
 import logging
 from app.database import get_db_connection
 
+from typing import List
+from app.types import Contact
+
 logger = logging.getLogger(__name__)
 
 
@@ -125,3 +128,20 @@ async def seed_db():
                 contacts,
             )
             await db.commit()
+
+# --- Helper functions for contacts ---
+async def search_contacts_in_db(owner_id: str, query: str) -> List[Contact]:
+    async with get_db_connection() as db:
+        # Search by name or email
+        sql = "SELECT * FROM contacts WHERE owner_id = ? AND (name LIKE ? OR email LIKE ?)"
+        async with db.execute(sql, (owner_id, f"%{query}%", f"%{query}%")) as cursor:
+            rows = await cursor.fetchall()
+            return [Contact(**dict(row)) for row in rows]
+
+async def get_contacts_by_ids(ids: List[str]) -> List[Contact]:
+    async with get_db_connection() as db:
+        placeholders = ', '.join(['?'] * len(ids))
+        sql = f"SELECT * FROM contacts WHERE id IN ({placeholders})"
+        async with db.execute(sql, ids) as cursor:
+            rows = await cursor.fetchall()
+            return [Contact(**dict(row)) for row in rows]
