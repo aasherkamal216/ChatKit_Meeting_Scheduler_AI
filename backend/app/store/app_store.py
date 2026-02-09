@@ -205,3 +205,11 @@ async def create_event(
         )
         await db.commit()
         return event_id
+
+async def get_events_by_user(user_id: str) -> List[dict]:
+    async with get_db_connection() as db:
+        # Fetch upcoming events for the logged-in user (as organizer)
+        sql = "SELECT * FROM events WHERE organizer_id = ? ORDER BY start_time ASC"
+        async with db.execute(sql, (user_id,)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]

@@ -131,3 +131,25 @@ async def draft_invite(
     await ctx.context.stream_widget(widget)
 
     return f"Drafted meeting invite with subject '{subject}' for attendees {attendee_names} and displayed invite editor widget to user."
+
+
+@function_tool()
+async def check_schedule(ctx: RunContextWrapper[AgentContext]) -> str:
+    """
+    Retrieves the user's current schedule and list of booked meetings.
+    """
+    user_id = ctx.context.request_context.user_id
+    from app.store.app_store import (
+        get_events_by_user,
+    )  # local import to avoid circularity
+
+    events = await get_events_by_user(user_id)
+
+    if not events:
+        return "Your calendar is currently empty. No meetings are scheduled."
+
+    summary = "Here are your scheduled meetings:\n"
+    for e in events:
+        summary += f"- {e['subject']} at {e['start_time']} with {e['attendees']} (Location: {e['location']})\n"
+
+    return summary

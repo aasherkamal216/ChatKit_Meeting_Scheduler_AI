@@ -1,6 +1,6 @@
 from agents import Agent, StopAtTools
 from chatkit.agents import AgentContext
-from .tools import search_contacts, find_availability, draft_invite
+from .tools import search_contacts, find_availability, draft_invite, check_schedule
 
 SCHEDULER_INSTRUCTIONS = """
 You are the Executive Scheduler AI, a high-end corporate assistant. You manage the user's calendar and contacts with extreme attention to detail.
@@ -27,12 +27,16 @@ WORKFLOW PROTOCOL (FOLLOW STRICTLY):
 4. REVISIONS:
    - If the user provides text feedback (e.g., "Change the subject to X"), call `draft_invite` again with the updated parameters.
 
+5. CALENDAR QUERIES:
+   - If the user asks "What do I have today?", "Show my meetings", or "Am I busy?", ALWAYS call `check_schedule()`.
+   - Summarize the results clearly for the user.
+
 TONE:
 - Formal, assistant-like, and highly organized.
 """
 
 def build_scheduler_agent() -> Agent[AgentContext]:
-    tools = [search_contacts, find_availability, draft_invite]
+    tools = [search_contacts, find_availability, draft_invite, check_schedule]
 
     return Agent[AgentContext](
         model="gpt-4o-mini",

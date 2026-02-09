@@ -32,7 +32,7 @@ export default function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-gray-800"
+          className="text-gray-800 hover:text-white"
         >
           <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
         </svg>
