@@ -22,7 +22,7 @@ from app.types import RequestContext
 from app.store.chat_store import SqliteChatStore
 from app.store.app_store import create_event, get_contacts_by_ids
 from app.agents.scheduler import scheduler_agent
-from app.widgets.builders import build_meeting_confirmed
+from app.widgets.builders import build_meeting_confirmed, build_selection_locked # Import the new builder
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,6 @@ class MeetingSchedulerServer(ChatKitServer[RequestContext]):
         input_user_message: UserMessageItem | None,
         context: RequestContext,
     ) -> AsyncIterator[ThreadStreamEvent]:
-        """
-        Main inference loop. Runs the Agent against the thread history.
-        """
         # 1. Load History
         items_page = await self.store.load_thread_items(
             thread.id, after=None, limit=20, order="desc", context=context
@@ -97,22 +94,31 @@ class MeetingSchedulerServer(ChatKitServer[RequestContext]):
                 ]
             
             if not selected_ids:
-                # Handle edge case where user clicks confirm without checking boxes
                 yield ThreadItemDoneEvent(
                     item=AssistantMessageItem(
                         id=self.store.generate_item_id("message", thread, context),
                         thread_id=thread.id,
                         created_at=datetime.now(),
-                        content=[AssistantMessageContent(text="It looks like no contacts were selected. Please check the boxes for the people you'd like to invite.")]
+                        content=[AssistantMessageContent(text="No contacts selected. Please check at least one box.")]
                     )
                 )
-                return # Stop here
+                return
 
-            # Resolve names for better context
+            # 1. Resolve names
             contacts = await get_contacts_by_ids(selected_ids)
             names = ", ".join([c.name for c in contacts])
 
-            # Inject Hidden Context
+            # 2. LOCK THE WIDGET (Prevent re-clicking)
+            if sender:
+                locked_widget = build_selection_locked(
+                    title="Attendees Confirmed",
+                    detail=f"{len(contacts)} selected: {names}"
+                )
+                # Reuse sender ID to replace in-place
+                new_item = sender.model_copy(update={"widget": locked_widget})
+                yield ThreadItemReplacedEvent(item=new_item)
+
+            # 3. Inject Hidden Context for the LLM
             hidden_item = HiddenContextItem(
                 id=self.store.generate_item_id("hidden_context_item", thread, context),
                 thread_id=thread.id,
@@ -121,13 +127,49 @@ class MeetingSchedulerServer(ChatKitServer[RequestContext]):
             )
             await self.store.add_thread_item(thread.id, hidden_item, context)
 
-            # Trigger Agent Response
+            # 4. Trigger Agent Response (Agent will now see the hidden context and call find_availability)
             async for event in self.respond(thread, None, context):
                 yield event
 
+        # --- TIME SLOT SELECTION---
+        elif action.type == "schedule.pick_slot":
+            slot_id = action.payload.get("slot_id")
+            time_label = action.payload.get("time_label", "Selected Slot")
+
+            # 1. LOCK THE WIDGET
+            if sender:
+                locked_widget = build_selection_locked(
+                    title="Time Selected",
+                    detail=time_label
+                )
+                new_item = sender.model_copy(update={"widget": locked_widget})
+                yield ThreadItemReplacedEvent(item=new_item)
+
+            # 2. Inject Hidden Context
+            hidden_item = HiddenContextItem(
+                id=self.store.generate_item_id("hidden_context_item", thread, context),
+                thread_id=thread.id,
+                created_at=datetime.now(),
+                content=f"<USER_ACTION>User selected time slot ID: {slot_id} ({time_label})</USER_ACTION>"
+            )
+            await self.store.add_thread_item(thread.id, hidden_item, context)
+
+            # 3. Trigger Agent Response (Agent will now call draft_invite)
+            async for event in self.respond(thread, None, context):
+                yield event
+
+        # --- REVISION REQUEST ---
         elif action.type == "invite.request_revision":
-            # HITL Flow: User wants to change something via text.
-            # We DO NOT call respond() here. We yield a message asking for details.
+            # Note: We usually DON'T lock the form here, so the user can see what they are editing contextually,
+            # OR we lock it to force them to wait for the new form. Let's lock it to be safe.
+            if sender:
+                locked_widget = build_selection_locked(
+                    title="Action",
+                    detail="Requested Changes"
+                )
+                new_item = sender.model_copy(update={"widget": locked_widget})
+                yield ThreadItemReplacedEvent(item=new_item)
+
             yield ThreadItemDoneEvent(
                 item=AssistantMessageItem(
                     id=self.store.generate_item_id("message", thread, context),
@@ -140,30 +182,28 @@ class MeetingSchedulerServer(ChatKitServer[RequestContext]):
                     ],
                 )
             )
-            # Flow stops. Waiting for UserMessageItem input in next turn.
 
+        # --- FINAL SEND ---
         elif action.type == "invite.send":
-            # Finalization Flow.
-            # The payload contains the FORM data (subject, agenda, etc)
-            p = action.payload
+            p = action.payload or {}
 
             # 1. Write to DB
             await create_event(
                 organizer_id=context.user_id,
-                subject=p.get("subject"),
-                agenda=p.get("agenda"),
-                location=p.get("location"),
-                attendees=p.get("attendees"),
-                time_str=p.get("time_str"),
+                subject=p.get("subject", "No Subject"),
+                agenda=p.get("agenda", ""),
+                location=p.get("location", "Zoom"),
+                attendees=p.get("attendees", "Unknown Attendees"),
+                time_str=p.get("time_str", "Unknown Time"),
             )
 
             # 2. Replace the Editable Widget with a Static Confirmation Widget
             if sender:
                 confirmed_widget = build_meeting_confirmed(
-                    subject=p.get("subject"), time_str=p.get("time_str")
+                    subject=p.get("subject", "Meeting Scheduled"), 
+                    time_str=p.get("time_str", "Selected Time")
                 )
 
-                # We reuse the sender ID to replace it in-place
                 new_item = sender.model_copy(update={"widget": confirmed_widget})
                 yield ThreadItemReplacedEvent(item=new_item)
 
