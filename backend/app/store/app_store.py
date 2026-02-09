@@ -1,7 +1,8 @@
 import logging
-from app.database import get_db_connection
-
 from typing import List
+import uuid
+
+from app.database import get_db_connection
 from app.types import Contact
 
 logger = logging.getLogger(__name__)
@@ -129,6 +130,7 @@ async def seed_db():
             )
             await db.commit()
 
+
 # --- Helper functions for contacts ---
 async def search_contacts_in_db(owner_id: str, query: str) -> List[Contact]:
     async with get_db_connection() as db:
@@ -138,10 +140,43 @@ async def search_contacts_in_db(owner_id: str, query: str) -> List[Contact]:
             rows = await cursor.fetchall()
             return [Contact(**dict(row)) for row in rows]
 
+
 async def get_contacts_by_ids(ids: List[str]) -> List[Contact]:
     async with get_db_connection() as db:
-        placeholders = ', '.join(['?'] * len(ids))
+        placeholders = ", ".join(["?"] * len(ids))
         sql = f"SELECT * FROM contacts WHERE id IN ({placeholders})"
         async with db.execute(sql, ids) as cursor:
             rows = await cursor.fetchall()
             return [Contact(**dict(row)) for row in rows]
+
+
+async def create_event(
+    organizer_id: str,
+    subject: str,
+    agenda: str,
+    location: str,
+    attendees: str,
+    time_str: str,
+) -> str:
+    async with get_db_connection() as db:
+        event_id = str(uuid.uuid4())
+        # In a real app, you'd parse time_str to actual datetime objects.
+        # For this demo, we store strings to match the simplified widget data.
+        await db.execute(
+            """
+            INSERT INTO events (id, organizer_id, subject, agenda, location, attendees, start_time, end_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                event_id,
+                organizer_id,
+                subject,
+                agenda,
+                location,
+                attendees,
+                time_str,
+                time_str,
+            ),
+        )
+        await db.commit()
+        return event_id
