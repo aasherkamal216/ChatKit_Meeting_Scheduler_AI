@@ -81,43 +81,47 @@ class MeetingSchedulerServer(ChatKitServer[RequestContext]):
         logger.info(f"Action received: {action.type} with payload: {action.payload}")
 
         if action.type == "contacts.confirm":
-            # Payload e.g.: {"selected.c1": True, "selected.c2": True}
-            selected_ids = [
-                key.replace("selected.", "")
-                for key, val in action.payload.items()
-                if key.startswith("selected.") and val is True
-            ]
+            selected_map = action.payload.get("selected", {})
+            if not isinstance(selected_map, dict):
+                # Fallback in case of flat payload (depends on specific SDK version/config)
+                selected_ids = [
+                    key.replace("selected.", "") 
+                    for key, val in action.payload.items() 
+                    if key.startswith("selected.") and val is True
+                ]
+            else:
+                # Standard nested behavior
+                selected_ids = [
+                    contact_id for contact_id, is_selected in selected_map.items() 
+                    if is_selected is True
+                ]
+            
+            if not selected_ids:
+                # Handle edge case where user clicks confirm without checking boxes
+                yield ThreadItemDoneEvent(
+                    item=AssistantMessageItem(
+                        id=self.store.generate_item_id("message", thread, context),
+                        thread_id=thread.id,
+                        created_at=datetime.now(),
+                        content=[AssistantMessageContent(text="It looks like no contacts were selected. Please check the boxes for the people you'd like to invite.")]
+                    )
+                )
+                return # Stop here
 
             # Resolve names for better context
             contacts = await get_contacts_by_ids(selected_ids)
             names = ", ".join([c.name for c in contacts])
-
-            # Inject Hidden Context so Agent knows what happened
-            hidden_item = HiddenContextItem(
-                id=self.store.generate_item_id("hidden_context_item", thread, context),
-                thread_id=thread.id,
-                created_at=datetime.now(),
-                content=f"<USER_ACTION>User confirmed selection of contacts: {names} (IDs: {selected_ids})</USER_ACTION>",
-            )
-            await self.store.add_thread_item(thread.id, hidden_item, context)
-
-            # Trigger Agent Response (Agent will likely see this and call find_availability)
-            async for event in self.respond(thread, None, context):
-                yield event
-
-        elif action.type == "schedule.pick_slot":
-            slot_id = action.payload.get("slot_id")
 
             # Inject Hidden Context
             hidden_item = HiddenContextItem(
                 id=self.store.generate_item_id("hidden_context_item", thread, context),
                 thread_id=thread.id,
                 created_at=datetime.now(),
-                content=f"<USER_ACTION>User clicked/selected time slot ID: {slot_id}</USER_ACTION>",
+                content=f"<USER_ACTION>User confirmed selection of contacts: {names} (IDs: {selected_ids})</USER_ACTION>"
             )
             await self.store.add_thread_item(thread.id, hidden_item, context)
 
-            # Trigger Agent Response (Agent will likely call draft_invite)
+            # Trigger Agent Response
             async for event in self.respond(thread, None, context):
                 yield event
 

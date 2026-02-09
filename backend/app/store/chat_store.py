@@ -1,12 +1,35 @@
 import json
+import uuid # Import uuid
 from typing import Any
 from chatkit.store import Store, NotFoundError
 from chatkit.types import ThreadMetadata, ThreadItem, Page
 from app.database import get_db_connection
 from app.types import RequestContext
+from pydantic import TypeAdapter
 
+thread_item_adapter = TypeAdapter(ThreadItem)
 
 class SqliteChatStore(Store[RequestContext]):
+    
+    # Override ID generation to handle hidden items and prevent KeyError
+    def generate_item_id(self, item_type: str, thread: ThreadMetadata, context: RequestContext) -> str:
+        if item_type == "hidden_context_item":
+            return f"hcx_{uuid.uuid4().hex[:8]}"
+        
+        prefix_map = {
+            "thread": "thr",
+            "message": "msg",
+            "tool_call": "tc",
+            "workflow": "wf",
+            "task": "tsk",
+            "attachment": "atc",
+            "widget": "wdg", # Ensure widget is covered
+            "generated_image": "img",
+            "client_tool_call": "ctc"
+        }
+        prefix = prefix_map.get(item_type, "itm")
+        return f"{prefix}_{uuid.uuid4().hex[:8]}"
+
     async def load_thread(
         self, thread_id: str, context: RequestContext
     ) -> ThreadMetadata:
@@ -18,6 +41,7 @@ class SqliteChatStore(Store[RequestContext]):
                 row = await cursor.fetchone()
                 if not row:
                     raise NotFoundError(f"Thread {thread_id} not found")
+                # ThreadMetadata is a class, so model_validate works
                 return ThreadMetadata.model_validate(json.loads(row[0]))
 
     async def save_thread(
@@ -62,7 +86,10 @@ class SqliteChatStore(Store[RequestContext]):
             query = "SELECT data FROM items WHERE thread_id = ? ORDER BY created_at DESC LIMIT ?"
             async with db.execute(query, (thread_id, limit)) as cursor:
                 rows = await cursor.fetchall()
-                data = [ThreadItem.model_validate(json.loads(row[0])) for row in rows]
+                data = [
+                    thread_item_adapter.validate_python(json.loads(row[0]))
+                    for row in rows
+                ]
                 if order == "asc":
                     data.reverse()
 
@@ -117,7 +144,7 @@ class SqliteChatStore(Store[RequestContext]):
                 row = await cursor.fetchone()
                 if not row:
                     raise NotFoundError(f"Item {item_id} not found")
-                return ThreadItem.model_validate(json.loads(row[0]))
+                return thread_item_adapter.validate_python(json.loads(row[0]))
 
     async def delete_thread(self, thread_id: str, context: RequestContext) -> None:
         async with get_db_connection() as db:

@@ -29,12 +29,14 @@ async def _send_assistant_message(ctx: RunContextWrapper[AgentContext], text: st
     )
 
 
-@function_tool(
-    description_override="Search for contacts in the user's address book by name or email. It displays a picker widget for the user to select the correct contacts."
-)
+@function_tool()
 async def search_contacts(
     ctx: RunContextWrapper[AgentContext], query: str
 ) -> Dict[str, str]:
+    """
+    Searches the user's address book for contacts matching a name or email. This tool displays a visual Contact Picker widget to the user.
+    Parameter: query (e.g., 'Bob' or 'bob@example.com')
+    """
     user_id = ctx.context.request_context.user_id
     contacts = await search_contacts_in_db(user_id, query)
 
@@ -54,7 +56,7 @@ async def search_contacts(
     await ctx.context.stream_widget(widget)
 
     # 3. Return summary to Agent memory
-    return f"Found {len(contacts)} contacts and displayed contact picker widget to user."
+    return f"SUCCESS: Displayed Contact Picker widget with the following matches: {contacts}. Waiting for user to confirm selection via UI action."
 
 
 @function_tool(
@@ -96,9 +98,7 @@ async def find_availability(
     return f"Analyzed availability for attendees {attendee_ids} and displayed time picker widget to user."
 
 
-@function_tool(
-    description_override="Create a draft meeting invitation widget and display it to the user for review. Use this BEFORE sending any invite."
-)
+@function_tool()
 async def draft_invite(
     ctx: RunContextWrapper[AgentContext],
     subject: str,
@@ -107,7 +107,15 @@ async def draft_invite(
     attendee_names: str,
     location: str = "Zoom",
 ) -> Dict[str, str]:
+    """Create a draft meeting invitation widget and display it to the user for review. Use this BEFORE sending any invite.
 
+    Args:
+        subject (str): The subject of the meeting.
+        agenda (str): The agenda of the meeting.
+        slot_time_str (str): The time slot for the meeting.
+        attendee_names (str): A comma-separated list of attendee names.
+        location (str, optional): The location of the meeting. Defaults to "Zoom".
+    """
     await _send_assistant_message(
         ctx,
         "I've drafted the invitation. Please review the agenda and subject below. You can edit them directly if needed.",

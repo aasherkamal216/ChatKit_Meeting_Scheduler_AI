@@ -78,7 +78,6 @@ async def init_db():
 
 
 async def seed_db():
-    # FIXED: usage of async context manager
     async with get_db_connection() as db:
         # Check if users exist
         async with db.execute("SELECT count(*) FROM users") as cursor:
@@ -98,7 +97,7 @@ async def seed_db():
             )
 
             # Contacts for Alice
-            contacts = [
+            alice_contacts = [
                 (
                     "c1",
                     "alice",
@@ -124,9 +123,30 @@ async def seed_db():
                     "https://i.pravatar.cc/150?u=dana",
                 ),
             ]
+
+            # Contacts for Bob (NEW)
+            bob_contacts = [
+                (
+                    "c4",
+                    "bob",
+                    "Alice Executive",
+                    "alice@example.com",
+                    "Boss",
+                    "https://i.pravatar.cc/150?u=alice",
+                ),
+                (
+                    "c5",
+                    "bob",
+                    "Eve External",
+                    "eve@vendor.com",
+                    "Vendor",
+                    "https://i.pravatar.cc/150?u=eve",
+                ),
+            ]
+
             await db.executemany(
                 "INSERT INTO contacts (id, owner_id, name, email, role, avatar_url) VALUES (?, ?, ?, ?, ?, ?)",
-                contacts,
+                alice_contacts + bob_contacts,
             )
             await db.commit()
 
@@ -134,9 +154,14 @@ async def seed_db():
 # --- Helper functions for contacts ---
 async def search_contacts_in_db(owner_id: str, query: str) -> List[Contact]:
     async with get_db_connection() as db:
-        # Search by name or email
-        sql = "SELECT * FROM contacts WHERE owner_id = ? AND (name LIKE ? OR email LIKE ?)"
-        async with db.execute(sql, (owner_id, f"%{query}%", f"%{query}%")) as cursor:
+        # Use LOWER() for case-insensitive matching in SQLite
+        sql = """
+            SELECT * FROM contacts 
+            WHERE owner_id = ? 
+            AND (LOWER(name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?))
+        """
+        search_term = f"%{query}%"
+        async with db.execute(sql, (owner_id, search_term, search_term)) as cursor:
             rows = await cursor.fetchall()
             return [Contact(**dict(row)) for row in rows]
 
