@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTheme } from "./ThemeProvider";
 
-interface ThemeToggleProps {
-  theme: "light" | "dark";
-  onToggle: () => void;
-}
+interface ThemeToggleProps {}
 
-export default function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
+export default function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+
   // Prevent hydration mismatch
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -16,8 +16,8 @@ export default function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
 
   return (
     <button
-      onClick={onToggle}
-      className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+      onClick={toggleTheme}
+      className="p-2 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
       title="Toggle Theme"
     >
       {theme === "light" ? (
@@ -32,7 +32,7 @@ export default function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-gray-800 hover:text-white"
+          className="text-zinc-900 dark:text-zinc-100"
         >
           <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
         </svg>
